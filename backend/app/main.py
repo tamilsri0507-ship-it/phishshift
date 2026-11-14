@@ -64,14 +64,47 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # Include API Router
 app.include_router(router)
 
-@app.get("/", tags=["System"])
-def root():
-    return {
-        "service": "PhishShift API",
-        "status": "online",
-        "documentation": "/docs",
-        "version": settings.APP_VERSION
-    }
+# Mount and serve built React frontend if available
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pathlib import Path
+
+_frontend_candidates = [
+    Path(__file__).resolve().parent.parent.parent / "frontend" / "dist",
+    Path.cwd() / "frontend" / "dist",
+    Path.cwd() / "dist"
+]
+frontend_dist = next((p for p in _frontend_candidates if (p / "index.html").exists()), None)
+
+if frontend_dist:
+    assets_dir = frontend_dist / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    for static_file in ["favicon.svg", "icons.svg"]:
+        f_path = frontend_dist / static_file
+        if f_path.exists():
+            def make_static_handler(fp):
+                return lambda: FileResponse(fp)
+            app.add_api_route(f"/{static_file}", make_static_handler(f_path), methods=["GET"], include_in_schema=False)
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_frontend(full_path: str):
+        if full_path.startswith("api/") or full_path in ("api", "docs", "redoc", "openapi.json"):
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+        target = frontend_dist / full_path
+        if target.exists() and target.is_file():
+            return FileResponse(target)
+        return FileResponse(frontend_dist / "index.html")
+else:
+    @app.get("/", tags=["System"])
+    def root():
+        return {
+            "service": "PhishShift API",
+            "status": "online",
+            "documentation": "/docs",
+            "version": settings.APP_VERSION
+        }
 
 if __name__ == "__main__":
     import uvicorn
