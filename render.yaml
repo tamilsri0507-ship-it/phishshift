@@ -1,0 +1,37 @@
+services:
+  # -------------------------------------------------------------
+  # PhishShift Backend (FastAPI Web Service)
+  # -------------------------------------------------------------
+  - type: web
+    name: phishshift-backend
+    runtime: python
+    buildCommand: pip install --upgrade pip && pip install -r backend/requirements.txt
+    startCommand: python -m uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: CORS_ORIGINS
+        value: "*"
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+  # -------------------------------------------------------------
+  # PhishShift Frontend (React Vite Static Site)
+  # -------------------------------------------------------------
+  - type: static_site
+    name: phishshift-frontend
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: phishshift-backend
+          property: host
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    autoDeploy: true
+

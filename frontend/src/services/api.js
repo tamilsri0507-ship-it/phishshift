@@ -2,7 +2,9 @@
  * API client service for PhishShift Backend.
  */
 
-const API_BASE = '/api';
+// Dynamic API base: uses VITE_API_URL if set in production, falls back to relative /api for local Vite proxy
+const RAW_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = RAW_BASE ? `${RAW_BASE.replace(/\/$/, '')}/api` : '/api';
 
 async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
