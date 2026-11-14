@@ -32,11 +32,24 @@ class Settings:
     DATABASE_PATH: Path = BASE_DIR / "phishshift.db"
     DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{DATABASE_PATH.as_posix()}")
 
-    # ML Paths
-    ML_DIR: Path = WORKSPACE_DIR / "ml"
+    # ML Paths - resilient candidate search
+    _candidate_ml = [
+        WORKSPACE_DIR / "ml",
+        BASE_DIR / "ml",
+        Path.cwd() / "ml",
+        Path.cwd() / "backend" / "ml"
+    ]
+    ML_DIR: Path = next((p for p in _candidate_ml if p.exists()), WORKSPACE_DIR / "ml")
     ARTIFACTS_DIR: Path = ML_DIR / "artifacts"
     REPORTS_DIR: Path = ML_DIR / "reports"
-    DATA_PROCESSED_DIR: Path = WORKSPACE_DIR / "data" / "processed"
+
+    _candidate_data = [
+        WORKSPACE_DIR / "data" / "processed",
+        BASE_DIR / "data" / "processed",
+        Path.cwd() / "data" / "processed",
+        Path.cwd() / "backend" / "data" / "processed"
+    ]
+    DATA_PROCESSED_DIR: Path = next((p for p in _candidate_data if p.exists()), WORKSPACE_DIR / "data" / "processed")
 
     # Default thresholds & model
     DEFAULT_MODEL: str = os.getenv("DEFAULT_MODEL", "linear_svm")
